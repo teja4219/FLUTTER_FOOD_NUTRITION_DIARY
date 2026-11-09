@@ -1,0 +1,934 @@
+import 'package:flutter/material.dart';
+
+void main() {
+  runApp(
+    const MaterialApp(debugShowCheckedModeBanner: false, home: NutritionApp()),
+  );
+}
+
+const green = Color(0xFF176B45);
+const lightGreen = Color(0xFFEAF7EF);
+const bg = Color(0xFFF5FAF6);
+
+// FOOD MODEL
+class Food {
+  final String name;
+  final String category;
+  final int calories;
+  final double protein, carbs, fat;
+
+  const Food(
+    this.name,
+    this.category,
+    this.calories,
+    this.protein,
+    this.carbs,
+    this.fat,
+  );
+}
+
+// MEAL MODEL
+class Meal {
+  Food food;
+  String type;
+  double quantity;
+  DateTime date;
+
+  Meal(this.food, this.type, this.quantity, this.date);
+
+  int get calories => (food.calories * quantity).round();
+  double get protein => food.protein * quantity;
+  double get carbs => food.carbs * quantity;
+  double get fat => food.fat * quantity;
+}
+
+// FOOD DATABASE
+const foods = [
+  Food('Idli', 'South Indian', 58, 2, 12, .4),
+  Food('Dosa', 'South Indian', 168, 4, 28, 4),
+  Food('Rice', 'Grains', 130, 2.7, 28, .3),
+  Food('Chapati', 'Grains', 120, 3.5, 20, 3),
+  Food('Dal', 'Indian', 116, 9, 20, .4),
+  Food('Sambar', 'Indian', 80, 4, 12, 2),
+  Food('Curd', 'Dairy', 98, 5, 7, 5),
+  Food('Paneer', 'Protein', 265, 18, 3.5, 20),
+  Food('Egg', 'Protein', 78, 6, .6, 5),
+  Food('Milk', 'Dairy', 122, 8, 12, 5),
+  Food('Apple', 'Fruits', 95, .5, 25, .3),
+  Food('Banana', 'Fruits', 105, 1.3, 27, .4),
+  Food('Orange', 'Fruits', 62, 1.2, 15, .2),
+  Food('Chicken', 'Protein', 165, 31, 0, 3.6),
+  Food('Vegetables', 'Healthy', 65, 3, 12, .5),
+  Food('Oats', 'Healthy', 150, 5, 27, 3),
+  Food('Almonds', 'Nuts', 164, 6, 6, 14),
+];
+
+// ROOT APPLICATION
+class NutritionApp extends StatefulWidget {
+  const NutritionApp({super.key});
+
+  @override
+  State<NutritionApp> createState() => _NutritionAppState();
+}
+
+class _NutritionAppState extends State<NutritionApp> {
+  int tab = 0;
+  int goal = 2000;
+  int water = 0;
+  int waterGoal = 8;
+  String userName = 'Food Lover';
+
+  final List<Meal> meals = [];
+
+  final List<int> weeklyCalories = [1200, 1500, 1100, 1800, 1400, 1600, 0];
+
+  DateTime selectedDate = DateTime.now();
+
+  bool sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  List<Meal> get dailyMeals =>
+      meals.where((m) => sameDay(m.date, selectedDate)).toList();
+
+  int get calories => dailyMeals.fold(0, (s, m) => s + m.calories);
+
+  double get protein => dailyMeals.fold(0.0, (s, m) => s + m.protein);
+
+  double get carbs => dailyMeals.fold(0.0, (s, m) => s + m.carbs);
+
+  double get fat => dailyMeals.fold(0.0, (s, m) => s + m.fat);
+
+  // MAIN SCREEN
+  @override
+  Widget build(BuildContext context) {
+    final pages = [dashboard(), diary(), reports(), profile()];
+
+    return Scaffold(
+      body: SafeArea(child: pages[tab]),
+      floatingActionButton: tab <= 1
+          ? FloatingActionButton.extended(
+              backgroundColor: green,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add),
+              label: const Text('Add Food'),
+              onPressed: addFoodDialog,
+            )
+          : null,
+      bottomNavigationBar: NavigationBar(
+        backgroundColor: Colors.white,
+        selectedIndex: tab,
+        onDestinationSelected: (i) {
+          setState(() => tab = i);
+        },
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.restaurant_menu),
+            label: 'Diary',
+          ),
+          NavigationDestination(icon: Icon(Icons.bar_chart), label: 'Reports'),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            label: 'Profile',
+          ),
+        ],
+      ),
+    );
+  }
+
+  // SECTION TITLE
+  Widget title(String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: green,
+        ),
+      ),
+    );
+  }
+
+  // DASHBOARD
+  Widget dashboard() {
+    final progress = (calories / goal).clamp(0.0, 1.0).toDouble();
+
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Hello, $userName!',
+                    style: const TextStyle(
+                      fontSize: 23,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+            const CircleAvatar(
+              backgroundColor: lightGreen,
+              child: Icon(Icons.eco, color: green),
+            ),
+          ],
+        ),
+
+        title('Daily Nutrition'),
+
+        Container(
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: green,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            children: [
+              const Text(
+                'CALORIES CONSUMED',
+                style: TextStyle(color: Colors.white70, letterSpacing: 2),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                height: 155,
+                width: 155,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox.expand(
+                      child: CircularProgressIndicator(
+                        value: progress,
+                        strokeWidth: 13,
+                        backgroundColor: Colors.white24,
+                        valueColor: const AlwaysStoppedAnimation(Colors.white),
+                      ),
+                    ),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '$calories',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Text(
+                          'kcal',
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 15),
+              Text(
+                '${(goal - calories).clamp(0, goal)} kcal remaining',
+                style: const TextStyle(color: Colors.white, fontSize: 17),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                'Daily target: $goal kcal',
+                style: const TextStyle(color: Colors.white70),
+              ),
+            ],
+          ),
+        ),
+
+        title('Macronutrients'),
+
+        Row(
+          children: [
+            macroCard('Protein', protein, Colors.blue),
+            macroCard('Carbs', carbs, Colors.orange),
+            macroCard('Fat', fat, Colors.purple),
+          ],
+        ),
+
+        title('Water Intake'),
+
+        Card(
+          color: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.water_drop, color: Colors.blue),
+                    const SizedBox(width: 10),
+                    Text(
+                      '$water / $waterGoal glasses',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () {
+                        setState(() {
+                          if (water > 0) water--;
+                        });
+                      },
+                      icon: const Icon(Icons.remove_circle_outline),
+                    ),
+                    IconButton(
+                      onPressed: () {
+                        setState(() => water++);
+                      },
+                      icon: const Icon(Icons.add_circle_outline),
+                    ),
+                  ],
+                ),
+                LinearProgressIndicator(
+                  value: (water / waterGoal).clamp(0.0, 1.0).toDouble(),
+                  color: Colors.blue,
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        title("Today's Meals"),
+
+        if (dailyMeals.isEmpty)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(15),
+              child: Text('No meals added yet!'),
+            ),
+          ),
+
+        ...dailyMeals.map(mealTile),
+
+        const SizedBox(height: 80),
+      ],
+    );
+  }
+
+  // NUTRITION CARD
+  Widget macroCard(String name, double value, Color color) {
+    return Expanded(
+      child: Card(
+        color: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 17, horizontal: 4),
+          child: Column(
+            children: [
+              Icon(Icons.circle, color: color, size: 13),
+              const SizedBox(height: 8),
+              Text(
+                '${value.toStringAsFixed(1)}g',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text(
+                name,
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // MEAL CARD
+  Widget mealTile(Meal meal) {
+    return Card(
+      color: Colors.white,
+      margin: const EdgeInsets.only(bottom: 9),
+      child: ListTile(
+        leading: const CircleAvatar(
+          backgroundColor: lightGreen,
+          child: Icon(Icons.restaurant, color: green),
+        ),
+        title: Text(
+          meal.food.name,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text('${meal.type} • ${meal.quantity} serving(s)'),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${meal.calories} kcal',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            IconButton(
+              onPressed: () {
+                setState(() => meals.remove(meal));
+              },
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // FOOD DIARY
+  Widget diary() {
+    final types = ['Breakfast', 'Lunch', 'Snacks', 'Dinner'];
+
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        const Text(
+          'My Food Diary',
+          style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+        ),
+        const Text(
+          'Your daily food records',
+          style: TextStyle(color: Colors.grey),
+        ),
+        const SizedBox(height: 15),
+
+        ...types.map((type) {
+          final entries = dailyMeals.where((m) => m.type == type).toList();
+
+          final total = entries.fold(0, (s, m) => s + m.calories);
+
+          return Card(
+            color: Colors.white,
+            child: ExpansionTile(
+              leading: Icon(
+                type == 'Breakfast'
+                    ? Icons.free_breakfast
+                    : type == 'Lunch'
+                    ? Icons.lunch_dining
+                    : type == 'Snacks'
+                    ? Icons.cookie
+                    : Icons.dinner_dining,
+                color: green,
+              ),
+              title: Text(
+                type,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text('$total kcal'),
+              children: [
+                if (entries.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(15),
+                    child: Text('No food added'),
+                  ),
+                ...entries.map(mealTile),
+              ],
+            ),
+          );
+        }),
+
+        const SizedBox(height: 80),
+      ],
+    );
+  }
+
+  // REPORTS
+  Widget reports() {
+    final maxCalories = weeklyCalories.reduce((a, b) => a > b ? a : b);
+
+    final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        const Text(
+          'Nutrition Reports',
+          style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+        ),
+        const Text(
+          'Your nutrition overview',
+          style: TextStyle(color: Colors.grey),
+        ),
+
+        title('Today'),
+
+        Card(
+          color: Colors.white,
+          child: Column(
+            children: [
+              reportRow('Calories', '$calories kcal'),
+              reportRow('Protein', '${protein.toStringAsFixed(1)} g'),
+              reportRow('Carbohydrates', '${carbs.toStringAsFixed(1)} g'),
+              reportRow('Fat', '${fat.toStringAsFixed(1)} g'),
+            ],
+          ),
+        ),
+
+        title('Weekly Calorie Chart'),
+
+        Card(
+          color: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: SizedBox(
+              height: 190,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: List.generate(7, (i) {
+                  final value = i == 6 ? calories : weeklyCalories[i];
+
+                  final maxValue = maxCalories > calories
+                      ? maxCalories
+                      : (calories == 0 ? 1 : calories);
+
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text('$value', style: const TextStyle(fontSize: 10)),
+                          const SizedBox(height: 5),
+                          Container(
+                            height: 130 * value / maxValue,
+                            decoration: BoxDecoration(
+                              color: i == 6 ? green : Colors.green.shade200,
+                              borderRadius: BorderRadius.circular(7),
+                            ),
+                          ),
+                          const SizedBox(height: 7),
+                          Text(days[i], style: const TextStyle(fontSize: 11)),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 80),
+      ],
+    );
+  }
+
+  Widget reportRow(String label, String value) {
+    return ListTile(
+      title: Text(label),
+      trailing: Text(
+        value,
+        style: const TextStyle(color: green, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  // PROFILE
+  Widget profile() {
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        const Text(
+          'My Profile',
+          style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+        ),
+
+        const SizedBox(height: 20),
+
+        const CircleAvatar(
+          radius: 45,
+          backgroundColor: lightGreen,
+          child: Icon(Icons.person, color: green, size: 50),
+        ),
+
+        const SizedBox(height: 15),
+
+        Center(
+          child: Text(
+            userName,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+        ),
+
+        title('Personal Settings'),
+
+        Card(
+          color: Colors.white,
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.person, color: green),
+                title: const Text('Change name'),
+                trailing: const Icon(Icons.edit),
+                onTap: changeName,
+              ),
+              ListTile(
+                leading: const Icon(Icons.flag, color: green),
+                title: const Text('Daily calorie goal'),
+                subtitle: Text('$goal kcal'),
+                trailing: const Icon(Icons.edit),
+                onTap: changeGoal,
+              ),
+              ListTile(
+                leading: const Icon(Icons.water_drop, color: Colors.blue),
+                title: const Text('Daily water goal'),
+                subtitle: Text('$waterGoal glasses'),
+                trailing: const Icon(Icons.edit),
+                onTap: changeWaterGoal,
+              ),
+            ],
+          ),
+        ),
+
+        title('BMI Calculator'),
+        bmiCard(),
+
+        title('Other Settings'),
+
+        Card(
+          color: Colors.white,
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.refresh, color: green),
+                title: const Text('Reset water intake'),
+                onTap: () {
+                  setState(() => water = 0);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_forever, color: Colors.red),
+                title: const Text('Clear all food records'),
+                onTap: () {
+                  setState(() => meals.clear());
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // CHANGE NAME
+  void changeName() {
+    final c = TextEditingController(text: userName);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Your name'),
+        content: TextField(controller: c),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                userName = c.text.trim().isEmpty ? 'Food Lover' : c.text.trim();
+              });
+              Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // CHANGE CALORIE GOAL
+  void changeGoal() {
+    final c = TextEditingController(text: '$goal');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Daily calorie target'),
+        content: TextField(controller: c, keyboardType: TextInputType.number),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final value = int.tryParse(c.text);
+
+              if (value != null && value > 0) {
+                setState(() => goal = value);
+              }
+
+              Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // CHANGE WATER GOAL
+  void changeWaterGoal() {
+    final c = TextEditingController(text: '$waterGoal');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Water target (glasses)'),
+        content: TextField(controller: c, keyboardType: TextInputType.number),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final value = int.tryParse(c.text);
+
+              if (value != null && value > 0) {
+                setState(() => waterGoal = value);
+              }
+
+              Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // BMI CALCULATOR
+  Widget bmiCard() {
+    final h = TextEditingController();
+    final w = TextEditingController();
+
+    return Card(
+      color: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TextField(
+              controller: h,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Height (cm)'),
+            ),
+            TextField(
+              controller: w,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Weight (kg)'),
+            ),
+            const SizedBox(height: 12),
+
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: green,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                final height = double.tryParse(h.text);
+                final weight = double.tryParse(w.text);
+
+                if (height == null ||
+                    weight == null ||
+                    height <= 0 ||
+                    weight <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Enter valid values')),
+                  );
+                  return;
+                }
+
+                final bmi = weight / ((height / 100) * (height / 100));
+
+                final category = bmi < 18.5
+                    ? 'Underweight'
+                    : bmi < 25
+                    ? 'Normal range'
+                    : bmi < 30
+                    ? 'Overweight'
+                    : 'Obesity range';
+
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('BMI Result'),
+                    content: Text(
+                      'BMI: ${bmi.toStringAsFixed(1)}\n'
+                      'Category: $category\n\n'
+                      'BMI is a screening measure, not a diagnosis.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('OK'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              child: const Text('Calculate BMI'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ADD FOOD DIALOG
+  void addFoodDialog() {
+    Food selected = foods.first;
+    String type = 'Breakfast';
+    String search = '';
+
+    final quantity = TextEditingController(text: '1');
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, update) {
+            final results = foods
+                .where(
+                  (f) => f.name.toLowerCase().contains(search.toLowerCase()),
+                )
+                .toList();
+
+            return AlertDialog(
+              title: const Text('Add Food'),
+
+              content: SizedBox(
+                width: 350,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        decoration: const InputDecoration(
+                          labelText: 'Search food',
+                          prefixIcon: Icon(Icons.search),
+                        ),
+                        onChanged: (v) {
+                          update(() => search = v);
+                        },
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      DropdownButtonFormField<Food>(
+                        value: selected,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Food item',
+                        ),
+                        items: results.map((f) {
+                          return DropdownMenuItem(
+                            value: f,
+                            child: Text(f.name),
+                          );
+                        }).toList(),
+                        onChanged: (v) {
+                          if (v != null) {
+                            update(() => selected = v);
+                          }
+                        },
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      DropdownButtonFormField<String>(
+                        value: type,
+                        decoration: const InputDecoration(labelText: 'Meal'),
+                        items: ['Breakfast', 'Lunch', 'Snacks', 'Dinner'].map((
+                          v,
+                        ) {
+                          return DropdownMenuItem(value: v, child: Text(v));
+                        }).toList(),
+                        onChanged: (v) {
+                          if (v != null) {
+                            update(() => type = v);
+                          }
+                        },
+                      ),
+
+                      TextField(
+                        controller: quantity,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Quantity (servings)',
+                        ),
+                      ),
+
+                      const SizedBox(height: 15),
+
+                      Text(
+                        'Calories: ${selected.calories} kcal per serving',
+                        style: const TextStyle(
+                          color: green,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                      Text(
+                        'Protein: ${selected.protein}g • '
+                        'Carbs: ${selected.carbs}g • '
+                        'Fat: ${selected.fat}g',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: green,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () {
+                    final q = double.tryParse(quantity.text);
+
+                    if (q == null || q <= 0 || q > 100) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Enter valid quantity')),
+                      );
+                      return;
+                    }
+
+                    setState(() {
+                      meals.add(Meal(selected, type, q, selectedDate));
+                    });
+
+                    Navigator.pop(ctx);
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('${selected.name} added!')),
+                    );
+                  },
+                  child: const Text('Save Food'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
